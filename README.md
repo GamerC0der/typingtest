@@ -6,4 +6,5 @@ Get your WPM!
 ## Keybinds:
 
 **Ctrl + H**: Open Help
+
 **Enter**: Start Test
