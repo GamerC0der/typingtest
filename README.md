@@ -1,0 +1,2 @@
+# typingtest
+Get your WPM!
