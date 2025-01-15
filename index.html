@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .correct { color: green; }
+        .incorrect { color: red; }
+        .current-word { background-color: yellow; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            cursor: pointer;
+        }
+        .help-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: #4b5563;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .help-btn:hover {
+            background-color: #6b7280;
+        }
+        .step-card {
+            display: none;
+        }
+        .active-step {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-lg">
+        <h1 class="text-2xl font-bold text-center mb-4">Typing Test</h1>
+
+        <div class="step-card active-step" id="step1">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Step 1: Select a Speech</h2>
+            <div class="mb-4">
+                <label for="speeches" class="block text-sm font-medium text-gray-700 mb-1">Choose a speech:</label>
+                <select id="speeches" class="border border-gray-300 rounded-md p-2 w-full">
+                    <option value="selectaspeech">--Select a Speech--</option>
+                    <option value="stevejobs">Here's to the Crazy Ones - Steve Jobs</option>
+                    <option value="stevejobs2">Stanford Commencement Address - Steve Jobs</option>
+                    <option value="websummit">Web Summit - Tim Berners-Lee</option>
+                </select>
+                <button onclick="goToStep2()" class="mt-4 bg-blue-600 text-white rounded-md p-2 w-full hover:bg-blue-700 transition">Next: Start Typing</button>
+            </div>
+        </div>
+
+        <div class="step-card" id="step2">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Step 2: Start Typing</h2>
+            <div id="testText" class="border border-gray-300 rounded-md p-4 bg-gray-100 w-full mb-4 h-24 overflow-y-auto" style="white-space: pre-wrap;">To start, please select a speech. Then start typing it here.</div>
+            <textarea id="testArea" placeholder="Type the speech here..." disabled class="border border-gray-300 rounded-md p-2 w-full h-32"></textarea>
+            <div class="mt-4 text-center text-sm text-gray-600" id="timer">Time: 0s</div>
+            <div class="text-center text-sm text-gray-600" id="wpm">WPM: 0</div>
+            <div id="result" class="mt-4 text-center text-sm text-gray-600"></div>
+            <button onclick="goToStep3()" class="mt-4 bg-blue-600 text-white rounded-md p-2 w-full hover:bg-blue-700 transition">Next: View Results</button>
+        </div>
+
+        <div class="step-card" id="step3">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Step 3: Results</h2>
+            <div id="finalResult" class="text-center text-gray-800"></div>
+            <button onclick="resetTest()" class="mt-4 bg-blue-600 text-white rounded-md p-2 w-full hover:bg-blue-700 transition">Restart Test</button>
+        </div>
+    </div>
+
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeHelp()">&times;</span>
+            <h2 class="text-xl font-bold mb-2">Help</h2>
+            <p><strong>Info:</strong> Type the speech as accurately and quickly as possible. When you finish, your WPM and accuracy will be shown.</p>
+            <p><strong>Keybinds:</strong></p>
+            <ul>
+                <li><strong>Ctrl + H</strong>: Open Help</li>
+                <li><strong>Enter</strong>: Start Test</li>
+            </ul>
+        </div>
+    </div>
+
+    <button class="help-btn" onclick="openHelp()">Help</button>
+
+    <script>
+        let timerInterval, startTime, secondsElapsed = 0;
+        const speeches = {
+            selectaspeech: `Select a speech to continue.`,
+            stevejobs: `Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules. And they have no respect for the status quo. You can quote them, disagree with them, glorify or vilify them. About the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do.`,
+            stevejobs2: `Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work. And the only way to do great work is to love what you do. Don’t settle. Stay hungry. Stay foolish.`,
+            websummit: `The Web is not just a tool; it’s a platform for human progress. It’s a place where all people can come together and share their ideas. It’s a place where we will solve the biggest problems we’ve ever faced, from climate change to disease. We need the Web to continue to be open and free, and to be a tool for the advancement of human knowledge and communication.`
+        };
+
+        function goToStep2() {
+            const selectedSpeech = $('#speeches').val();
+            if (selectedSpeech !== 'selectaspeech') {
+                $('#step1').removeClass('active-step');
+                $('#step2').addClass('active-step');
+                $('#testText').text(speeches[selectedSpeech]);
+                $('#testArea').prop('disabled', false).val('').focus();
+                $('#testArea').attr('data-original', speeches[selectedSpeech]);
+                startTime = new Date();
+                secondsElapsed = 0;
+                clearInterval(timerInterval);
+                timerInterval = setInterval(function() {
+                    secondsElapsed++;
+                    $('#timer').text(`Time: ${secondsElapsed}s`);
+                }, 1000);
+                $('#testArea').on('input', checkInput);
+            } else {
+                alert('Please select a speech to continue.');
+            }
+        }
+
+        function checkInput() {
+            const originalText = $('#testArea').attr('data-original');
+            const userInput = $(this).val();
+            let correctCount = 0, outputHTML = '';
+
+            for (let i = 0; i < userInput.length; i++) {
+                if (userInput[i] === originalText[i]) {
+                    outputHTML += `<span class="correct">${userInput[i]}</span>`;
+                    correctCount++;
+                } else {
+                    outputHTML += `<span class="incorrect">${userInput[i]}</span>`;
+                }
+            }
+
+            const currentWPM = Math.round(userInput.split(' ').filter(w => w.length > 0).length / (secondsElapsed / 60));
+            $('#wpm').text(`WPM: ${currentWPM}`);
+            $('#testText').html(outputHTML + originalText.slice(userInput.length).split('').map(c => `<span>${c}</span>`).join(''));
+
+            if (userInput === originalText) {
+                const endTime = new Date();
+                const timeTaken = Math.round((endTime - startTime) / 1000);
+                const accuracy = ((correctCount / originalText.length) * 100).toFixed(2);
+                $('#result').text(`Congratulations! You typed the speech correctly in ${timeTaken} seconds with an accuracy of ${accuracy}%.`);
+                clearInterval(timerInterval);
+                $('#testArea').prop('disabled', true).off('input', checkInput);
+            }
+        }
+
+        function goToStep3() {
+            $('#step2').removeClass('active-step');
+            $('#step3').addClass('active-step');
+            const finalResultText = $('#result').text();
+            $('#finalResult').text(finalResultText);
+        }
+
+        function resetTest() {
+            $('#step3').removeClass('active-step');
+            $('#step1').addClass('active-step');
+            $('#speeches').val('selectaspeech');
+            $('#testText').text('To start, please select a speech. Then start typing it here.');
+            $('#testArea').val('').prop('disabled', true);
+            $('#timer').text('Time: 0s');
+            $('#wpm').text('WPM: 0');
+            $('#result').text('');
+            clearInterval(timerInterval);
+        }
+
+        function openHelp() {
+            $('#helpModal').show();
+        }
+
+        function closeHelp() {
+            $('#helpModal').hide();
+        }
+
+        $(document).keydown(function(e) {
+            if (e.ctrlKey && e.key === 'h') openHelp();
+        });
+    </script>
+</body>
+</html>
