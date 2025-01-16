@@ -4,13 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Typing Test</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
-        .correct { color: green; }
-        .incorrect { color: red; }
-        .current-word { background-color: yellow; }
-
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .correct { color: #10B981; }
+        .incorrect { color: #EF4444; }
+        .current-word { background-color: #F59E0B; }
         .modal {
             display: none;
             position: fixed;
@@ -19,27 +23,70 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
+            background-color: rgba(0, 0, 0, 0.7);
             padding-top: 60px;
+            animation: fadeIn 0.3s ease-in-out;
         }
         .modal-content {
             background-color: #fff;
-            margin: 5% auto;
-            padding: 20px;
-            width: 80%;
-            max-width: 500px;
-            border-radius: 8px;
+            margin: auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transform: translateY(-50px);
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            0% { transform: translateY(-50px); }
+            100% { transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
         }
         .close {
             color: #aaa;
-            float: right;
             font-size: 28px;
             font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            transition: color 0.3s;
         }
         .close:hover,
         .close:focus {
-            color: black;
+            color: #000;
+        }
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .modal-body {
+            font-size: 1rem;
+            color: #666;
+        }
+        .modal-footer {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .modal-btn {
+            background-color: #3B82F6;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            border: none;
             cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .modal-btn:hover {
+            background-color: #2563EB;
+            transform: translateY(-2px);
         }
         .help-btn {
             position: fixed;
@@ -47,13 +94,16 @@
             left: 20px;
             background-color: #4b5563;
             color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             cursor: pointer;
-            font-size: 14px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
         .help-btn:hover {
             background-color: #6b7280;
+            transform: translateY(-3px);
         }
         .step-card {
             display: none;
@@ -61,12 +111,26 @@
         .active-step {
             display: block;
         }
+        #progressBar {
+            width: 100%;
+            height: 12px;
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        #progress {
+            height: 100%;
+            background-color: #4caf50;
+            border-radius: 8px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
-<body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen p-6">
 
-    <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-lg">
-        <h1 class="text-2xl font-bold text-center mb-4">Typing Test</h1>
+    <div class="bg-white shadow-xl rounded-xl p-8 w-full max-w-2xl">
+        <h1 class="text-3xl font-semibold text-center text-gray-800 mb-6">Typing Test</h1>
 
         <div class="step-card active-step" id="step1">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Step 1: Select a Speech</h2>
@@ -88,6 +152,10 @@
             <textarea id="testArea" placeholder="Type the speech here..." disabled class="border border-gray-300 rounded-md p-2 w-full h-32"></textarea>
             <div class="mt-4 text-center text-sm text-gray-600" id="timer">Time: 0s</div>
             <div class="text-center text-sm text-gray-600" id="wpm">WPM: 0</div>
+            <div class="text-center text-sm text-gray-600" id="mistakes">Mistakes: 0</div>
+            <div id="progressBar">
+                <div id="progress"></div>
+            </div>
             <div id="result" class="mt-4 text-center text-sm text-gray-600"></div>
             <button onclick="goToStep3()" class="mt-4 bg-blue-600 text-white rounded-md p-2 w-full hover:bg-blue-700 transition">Next: View Results</button>
         </div>
@@ -102,105 +170,199 @@
     <div id="helpModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeHelp()">&times;</span>
-            <h2 class="text-xl font-bold mb-2">Help</h2>
-            <p><strong>Info:</strong> Type the speech as accurately and quickly as possible. When you finish, your WPM and accuracy will be shown.</p>
-            <p><strong>Keybinds:</strong></p>
-            <ul>
-                <li><strong>Ctrl + H</strong>: Open Help</li>
-                <li><strong>Enter</strong>: Start Test</li>
-            </ul>
+            <div class="modal-header">Help</div>
+            <div class="modal-body">
+                <p><strong>Info:</strong> Type the speech as accurately and quickly as possible. When you finish, your WPM and accuracy will be shown.</p>
+                <p><strong>Keybinds:</strong></p>
+                <ul class="list-disc pl-6 space-y-2 text-gray-800">
+                    <li class="flex items-center">
+                        <strong class="text-blue-600">Ctrl + H</strong>: <span class="ml-1 text-gray-600">Open Help</span>
+                    </li>
+
+                </ul>
+                <hr class="my-4">
+                <p><strong>Customize Highlight Color:</strong></p>
+                <input type="color" id="highlightColorPicker" value="#F59E0B" 
+       class="w-12 h-12 border-2 border-gray-300 rounded cursor-pointer focus:outline-none">
+                <button id="resetColorBtn" class="mt-2 bg-red-500 text-white rounded-md p-2 w-full hover:bg-red-600">Reset to Default Color</button>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeHelp()">Close</button>
+            </div>
         </div>
     </div>
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeError()">&times;</span>
+            <div class="modal-header text-red-600">Error</div>
+            <div class="modal-body">
+                <p><strong>Oops! You forgot to select a speech.</strong></p>
+                <p>Please select one of the available speeches from the dropdown to continue with the typing test.</p>
+                <p>If you're unsure which speech to select, feel free to explore the options, or choose the one you're most comfortable with!</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn bg-red-600 hover:bg-red-700" onclick="closeError()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    
 
-    <button class="help-btn" onclick="openHelp()">Help</button>
+    <button class="help-btn" onclick="openHelp()"><i class="fas fa-question"></i></button>
 
     <script>
-        let timerInterval, startTime, secondsElapsed = 0;
         const speeches = {
-            selectaspeech: `Select a speech to continue.`,
-            stevejobs: `Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules. And they have no respect for the status quo. You can quote them, disagree with them, glorify or vilify them. About the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do.`,
-            stevejobs2: `Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work. And the only way to do great work is to love what you do. Don’t settle. Stay hungry. Stay foolish.`,
-            websummit: `The Web is not just a tool; it’s a platform for human progress. It’s a place where all people can come together and share their ideas. It’s a place where we will solve the biggest problems we’ve ever faced, from climate change to disease. We need the Web to continue to be open and free, and to be a tool for the advancement of human knowledge and communication.`
+            selectaspeech: "Select a speech to continue.",
+            stevejobs: "Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules... You can quote them, disagree with them, glorify or vilify them, but the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do.",
+            stevejobs2: "Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work. And the only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle. As with all matters of the heart, you'll know when you find it.",
+            websummit: "Tim Berners-Lee, creator of the World Wide Web, speaking at Web Summit in 2019, mentioned how the web is not only a place for information but for interaction. It's a platform for open communication, breaking down barriers. He emphasized that we need to ensure the web remains open and accessible to everyone, advocating for the ethics of web development and internet governance."
         };
 
-        function goToStep2() {
-            const selectedSpeech = $('#speeches').val();
-            if (selectedSpeech !== 'selectaspeech') {
-                $('#step1').removeClass('active-step');
-                $('#step2').addClass('active-step');
-                $('#testText').text(speeches[selectedSpeech]);
-                $('#testArea').prop('disabled', false).val('').focus();
-                $('#testArea').attr('data-original', speeches[selectedSpeech]);
-                startTime = new Date();
-                secondsElapsed = 0;
-                clearInterval(timerInterval);
-                timerInterval = setInterval(function() {
-                    secondsElapsed++;
-                    $('#timer').text(`Time: ${secondsElapsed}s`);
-                }, 1000);
-                $('#testArea').on('input', checkInput);
-            } else {
-                alert('Please select a speech to continue.');
-            }
+        let startTime, timerInterval, secondsElapsed = 0, mistakeCount = 0, highlightColor = "#F59E0B";
+
+        const savedColor = localStorage.getItem("highlightColor");
+        if (savedColor) {
+            highlightColor = savedColor;
+            document.getElementById("highlightColorPicker").value = highlightColor;
         }
 
-        function checkInput() {
-            const originalText = $('#testArea').attr('data-original');
-            const userInput = $(this).val();
-            let correctCount = 0, outputHTML = '';
-
-            for (let i = 0; i < userInput.length; i++) {
-                if (userInput[i] === originalText[i]) {
-                    outputHTML += `<span class="correct">${userInput[i]}</span>`;
-                    correctCount++;
-                } else {
-                    outputHTML += `<span class="incorrect">${userInput[i]}</span>`;
-                }
+        function goToStep2() {
+            const selectedSpeech = document.getElementById("speeches").value;
+            if (selectedSpeech === "selectaspeech") {
+                openErrorModal();
+                return;
             }
+            document.getElementById("testText").innerText = speeches[selectedSpeech];
+            document.getElementById("testArea").disabled = false;
+            startTimer();
+            showStep(2);
+        }
 
-            const currentWPM = Math.round(userInput.split(' ').filter(w => w.length > 0).length / (secondsElapsed / 60));
-            $('#wpm').text(`WPM: ${currentWPM}`);
-            $('#testText').html(outputHTML + originalText.slice(userInput.length).split('').map(c => `<span>${c}</span>`).join(''));
+        function openErrorModal() {
+            document.getElementById("errorModal").style.display = "block";
+        }
 
-            if (userInput === originalText) {
-                const endTime = new Date();
-                const timeTaken = Math.round((endTime - startTime) / 1000);
-                const accuracy = ((correctCount / originalText.length) * 100).toFixed(2);
-                $('#result').text(`Congratulations! You typed the speech correctly in ${timeTaken} seconds with an accuracy of ${accuracy}%.`);
-                clearInterval(timerInterval);
-                $('#testArea').prop('disabled', true).off('input', checkInput);
-            }
+        function closeError() {
+            document.getElementById("errorModal").style.display = "none";
         }
 
         function goToStep3() {
-            $('#step2').removeClass('active-step');
-            $('#step3').addClass('active-step');
-            const finalResultText = $('#result').text();
-            $('#finalResult').text(finalResultText);
+            clearInterval(timerInterval);
+            const wpm = calculateWPM();
+            const mistakes = calculateMistakes();
+            const resultText = `Your WPM is ${wpm} and you made ${mistakes} mistakes.`;
+            document.getElementById("finalResult").innerText = resultText;
+            showStep(3);
+        }
+
+        function showStep(step) {
+            const steps = document.querySelectorAll('.step-card');
+            steps.forEach((stepCard, index) => {
+                stepCard.classList.remove('active-step');
+                if (index === step - 1) {
+                    stepCard.classList.add('active-step');
+                }
+            });
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            secondsElapsed = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById("timer").innerText = `Time: ${secondsElapsed}s`;
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const typedText = document.getElementById("testArea").value;
+            const originalText = document.getElementById("testText").innerText;
+            const progress = Math.min((typedText.length / originalText.length) * 100, 100);
+            document.getElementById("progress").style.width = `${progress}%`;
+            highlightCurrentWord();
+        }
+
+        function highlightCurrentWord() {
+            const typedText = document.getElementById("testArea").value;
+            const originalText = document.getElementById("testText").innerText;
+            const words = originalText.split(' ');
+            const typedWords = typedText.split(' ');
+            let currentWordIndex = typedWords.length - 1;
+            let currentWord = words[currentWordIndex];
+
+            if (typedWords.length < words.length) {
+                let highlightedText = originalText.split(' ').map((word, index) => {
+                    if (index === currentWordIndex) {
+                        return `<span class="current-word" style="background-color: ${highlightColor}">${word}</span>`;
+                    }
+                    return word;
+                }).join(' ');
+                document.getElementById("testText").innerHTML = highlightedText;
+            }
+        }
+
+        function calculateWPM() {
+            const typedText = document.getElementById("testArea").value;
+            const wordCount = typedText.split(" ").length;
+            const wpm = Math.floor(wordCount / (secondsElapsed / 60));
+            document.getElementById("wpm").innerText = `WPM: ${wpm}`;
+            return wpm;
+        }
+
+        function calculateMistakes() {
+            const typedText = document.getElementById("testArea").value;
+            const originalText = document.getElementById("testText").innerText;
+            mistakeCount = 0;
+            for (let i = 0; i < typedText.length; i++) {
+                if (typedText[i] !== originalText[i]) {
+                    mistakeCount++;
+                }
+            }
+            document.getElementById("mistakes").innerText = `Mistakes: ${mistakeCount}`;
+            return mistakeCount;
         }
 
         function resetTest() {
-            $('#step3').removeClass('active-step');
-            $('#step1').addClass('active-step');
-            $('#speeches').val('selectaspeech');
-            $('#testText').text('To start, please select a speech. Then start typing it here.');
-            $('#testArea').val('').prop('disabled', true);
-            $('#timer').text('Time: 0s');
-            $('#wpm').text('WPM: 0');
-            $('#result').text('');
-            clearInterval(timerInterval);
+            document.getElementById("speeches").value = "selectaspeech";
+            document.getElementById("testArea").disabled = true;
+            document.getElementById("testArea").value = "";
+            document.getElementById("timer").innerText = "Time: 0s";
+            document.getElementById("mistakes").innerText = "Mistakes: 0";
+            document.getElementById("wpm").innerText = "WPM: 0";
+            document.getElementById("finalResult").innerText = "";
+            document.getElementById("progress").style.width = "0%";
+            showStep(1);
         }
 
         function openHelp() {
-            $('#helpModal').show();
+            document.getElementById("helpModal").style.display = "block";
         }
 
         function closeHelp() {
-            $('#helpModal').hide();
+            document.getElementById("helpModal").style.display = "none";
         }
+
+        document.getElementById("highlightColorPicker").addEventListener('input', function(event) {
+            highlightColor = event.target.value;
+            localStorage.setItem("highlightColor", highlightColor);  
+        });
+
+        document.getElementById("resetColorBtn").addEventListener('click', function() {
+            highlightColor = "#F59E0B"; 
+            document.getElementById("highlightColorPicker").value = highlightColor;
+            localStorage.setItem("highlightColor", highlightColor); 
+        });
 
         $(document).keydown(function(e) {
             if (e.ctrlKey && e.key === 'h') openHelp();
+        });
+
+        document.getElementById("testArea").addEventListener('input', function () {
+            calculateWPM();
+            calculateMistakes();
+            updateProgress();
         });
     </script>
 </body>
